@@ -1,0 +1,29 @@
+S2-029:
+$ docker pull medicean/vulapps:s_struts2_s2-029
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-029
+
+S2-033:
+$ docker pull medicean/vulapps:s_struts2_s2-033
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-033
+
+S2-045:
+$ docker pull medicean/vulapps:s_struts2_s2-045
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-045
+
+S2-046:
+$ docker pull medicean/vulapps:s_struts2_s2-046
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-046
+
+
+S2-048:
+$ docker pull medicean/vulapps:s_struts2_s2-048
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-048
+
+S2-052:
+$ docker pull medicean/vulapps:s_struts2_s2-052
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-052
+
+
+S2-devMode:
+$ docker pull medicean/vulapps:s_struts2_s2-devmode
+$ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-devmode
