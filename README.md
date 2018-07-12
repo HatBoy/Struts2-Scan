@@ -1,0 +1,1 @@
+# Struts2-Scan
