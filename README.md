@@ -102,6 +102,11 @@ $ python3 Struts2Scan.py -u http://192.168.100.8:8080/index.action
 $ python3 Struts2Scan.py -f urls.txt
 ```
 
+### POST数据:
+```
+$ python3 Struts2Scan.py -u http://192.168.100.8:8080/index.action -d name=admin&email=admin&age={exp}
+```
+
 ### 指定漏洞名称利用:
 ```
 # 命令执行
