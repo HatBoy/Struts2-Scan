@@ -27,3 +27,6 @@ $ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-052
 S2-devMode:
 $ docker pull medicean/vulapps:s_struts2_s2-devmode
 $ docker run -d -p 80:8080 medicean/vulapps:s_struts2_s2-devmode
+
+S2-057:
+https://github.com/vulhub/vulhub/tree/master/struts2/s2-057

