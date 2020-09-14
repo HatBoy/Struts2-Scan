@@ -211,11 +211,12 @@ def get_hash():
 
 def echo_check(self):
     """通过echo输出检查漏洞是否存在"""
-    hash_str = get_hash()
-    html = self.exec_cmd("echo " + hash_str)
+    num1 = random.randint(10000, 100000)
+    num2 = random.randint(10000, 100000)
+    html = self.exec_cmd(f"echo `expr {num1} + {num2}]`")
     if html.startswith("ERROR:"):
         return html
-    elif hash_str in html:
+    elif str(num1 + num2) in html:
         return True
     else:
         return False
