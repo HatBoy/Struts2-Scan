@@ -1,6 +1,6 @@
 FROM python:3.6-slim-stretch
 
-LABEL MAINTAINER "supj@gmail.com"
+LABEL MAINTAINER "supwangj@gmail.com"
 
 RUN echo "deb http://mirrors.ustc.edu.cn/debian/ stretch main  \
 deb http://mirrors.ustc.edu.cn/debian-security stretch/updates main   \
